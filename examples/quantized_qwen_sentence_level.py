@@ -9,13 +9,13 @@ from lxt.utils import pdf_heatmap, clean_tokens
 # modify the Qwen2 module to compute LRP in the backward pass
 monkey_patch(modeling_qwen2, verbose=True)
 
-# optional 4bit quantization 
+# optional 4bit quantization
 quantization_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_compute_dtype=torch.bfloat16, # use bfloat16 to prevent overflow in gradients
 )
 
-path = '/root/autodl-tmp/models/Qwen/Qwen2.5-1.5B-Instruct'
+path = '/content/Qwen/Qwen2.5-1.5B-Instruct'
 model = modeling_qwen2.Qwen2ForCausalLM.from_pretrained(path, device_map='cuda', torch_dtype=torch.bfloat16, quantization_config=quantization_config)
 
 # optional gradient checkpointing to save memory (2x forward pass)
@@ -28,8 +28,17 @@ for param in model.parameters():
 
 tokenizer = AutoTokenizer.from_pretrained(path)
 
-prompt = """Context: Mount Everest attracts many climbers, including highly experienced mountaineers. There are two main climbing routes, one approaching the summit from the southeast in Nepal (known as the standard route) and the other from the north in Tibet. While not posing substantial technical climbing challenges on the standard route, Everest presents dangers such as altitude sickness, weather, and wind, as well as hazards from avalanches and the Khumbu Icefall. As of November 2022, 310 people have died on Everest. Over 200 bodies remain on the mountain and have not been removed due to the dangerous conditions. The first recorded efforts to reach Everest's summit were made by British mountaineers. As Nepal did not allow foreigners to enter the country at the time, the British made several attempts on the north ridge route from the Tibetan side. After the first reconnaissance expedition by the British in 1921 reached 7,000 m (22,970 ft) on the North Col, the 1922 expedition pushed the north ridge route up to 8,320 m (27,300 ft), marking the first time a human had climbed above 8,000 m (26,247 ft). The 1924 expedition resulted in one of the greatest mysteries on Everest to this day: George Mallory and Andrew Irvine made a final summit attempt on 8 June but never returned, sparking debate as to whether they were the first to reach the top. Tenzing Norgay and Edmund Hillary made the first documented ascent of Everest in 1953, using the southeast ridge route. Norgay had reached 8,595 m (28,199 ft) the previous year as a member of the 1952 Swiss expedition. The Chinese mountaineering team of Wang Fuzhou, Gonpo, and Qu Yinhua made the first reported ascent of the peak from the north ridge on 25 May 1960. \
-Question: How high did they climb in 1922? According to the text, the 1922 expedition reached 8,"""
+prompt = """Context: \
+Louis Armstrong, born in 1901 in New Orleans, Louisiana, was a pioneering jazz trumpeter and vocalist known for his distinctive voice and virtuosic playing.\
+His career spanned five decades, during which he revolutionized jazz music with hits like "What a Wonderful World."\
+Armstrong's charisma and improvisational talent cemented his legacy as one of the greatest musicians in American history.\
+In 1969, the first human walked on the Moon as part of the Apollo 11 mission, a significant achievement in space exploration.\
+The mission was led by astronauts Neil Armstrong, Edwin "Buzz" Aldrin, and Michael Collins.\
+Armstrong's famous words upon landing were, "That's one small step for man, one giant leap for mankind."\
+Lance Armstrong, born in 1971, is a former professional cyclist who won the Tour de France seven consecutive times from 1999 to 2005.\
+Though celebrated for his achievements, his career later became controversial due to doping allegations.\
+Question: Who is the most famous person in the history of the Moon landing?\
+Answer: Neil Armstrong is considered to be the most famous person in the history of the Moon landing. His iconic quote, "That's one small step for man, one giant leap for mankind," became an instant classic and is still remembered today. """
 
 # get input embeddings so that we can compute gradients w.r.t. input embeddings
 input_ids = tokenizer(prompt, return_tensors="pt", add_special_tokens=True).input_ids.to(model.device)
@@ -39,21 +48,30 @@ input_embeds = model.get_input_embeddings()(input_ids)
 output_logits = model(inputs_embeds=input_embeds.requires_grad_(), use_cache=False).logits
 # sum_logits, _indices = torch.max(output_logits[0, -1, :], dim=-1)
 
-
-# Find token indices for the substring of interest
-target_text = "According to the text, the 1922 expedition reached 8,"
+# 编码目标文本并获取 token ID（不加特殊符号）
+# target_text = """ Neil Armstrong is considered to be the most famous person in the history of the Moon landing. His iconic quote, "That's one small step for man, one giant leap for mankind," became an instant classic and is still remembered today. """
+target_text = """ Neil Armstrong is considered to be the most famous person in the history of the Moon landing. His iconic quote, "That's one small step for man, one giant leap for mankind," became an instant classic and is still remembered today. """
 target_ids = tokenizer(target_text, add_special_tokens=False)["input_ids"]
 
-# Locate this sequence inside the full input_ids
+# 将整段 prompt 的 input_ids 转换为列表
+input_id_list = input_ids[0].tolist()
+
 def find_subsequence(subseq, seq):
-    for i in range(len(seq) - len(subseq) + 1):
+    for i in range(len(seq) - len(subseq), -1, -1):
         if seq[i:i+len(subseq)] == subseq:
-            return i, i+len(subseq)
+            return i, i + len(subseq)
     return None, None
 
-start_idx, end_idx = find_subsequence(target_ids, input_ids[0].tolist())
+# 定位目标子序列的位置（在整个 prompt 中的 token 起止索引）
+start_idx, end_idx = find_subsequence(target_ids, input_id_list)
+
+# 异常处理：找不到目标子串
 if start_idx is None:
-    raise ValueError("Target text tokens not found in input.")
+    decoded_input = tokenizer.decode(input_id_list)
+    raise ValueError(f"Target text tokens not found in input. Decoded input:\n{decoded_input}\nTarget:\n{target_text}")
+
+print(f"Target tokens found at positions {start_idx} to {end_idx}")
+
 
 # Get logits for the relevant token positions (excluding the last token for next-token prediction)
 target_logits = output_logits[0, start_idx:end_idx]  # shape: [target_len, vocab_size]
@@ -80,4 +98,4 @@ relevance = relevance / relevance.abs().max()
 tokens = tokenizer.convert_ids_to_tokens(input_ids[0])
 tokens = clean_tokens(tokens)
 
-pdf_heatmap(tokens, relevance, path='qwen2.5_1.5B_instruct_heatmap_sentence.pdf', backend='pdflatex') # backend='xelatex' supports more characters
+pdf_heatmap(tokens, relevance, path='/content/qwen2.5_1.5B_instruct_heatmap_sentence.pdf', backend='pdflatex') # backend='xelatex' supports more characters
