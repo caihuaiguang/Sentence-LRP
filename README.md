@@ -1,5 +1,8 @@
 ## A Simple Modification of AttnLRP for Attributing a Sentence to the Context
 
+![Sentence-Level Heatmap](https://github.com/caihuaiguang/Sentence-LRP/blob/main/examples/sentence_LRP.png?raw=true)
+
+
 When explaining a specific sentence output by a large language model, such as:
 
 > *"Neil Armstrong is considered to be the most famous person in the history of the Moon landing. His iconic quote, 'That’s one small step for man, one giant leap for mankind,' became an instant classic and is still remembered today."*
