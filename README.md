@@ -1,3 +1,17 @@
+## A Simple Modification of AttnLRP for Attributing a Sentence to the Context
+
+When explaining a specific sentence output by a large language model, such as:
+
+> *"Neil Armstrong is considered to be the most famous person in the history of the Moon landing. His iconic quote, 'That’s one small step for man, one giant leap for mankind,' became an instant classic and is still remembered today."*
+
+The**AttnLRP** method can successfully trace the relevant supporting context from a source document:
+
+> *The mission was led by astronauts Neil Armstrong, Edwin “Buzz” Aldrin, and Michael Collins. Armstrong’s famous words upon landing were, “That’s one small step for man, one giant leap for mankind.”*
+
+The code and result can be seen in [Sentence-level LRP Colab](https://colab.research.google.com/drive/163TSyjS9GeRagDEB-kUe2AsVnQ0K-Ai0?usp=sharing).
+
+
+## Original 
 <div align="center">
   <img src="docs/source/_static/lxt_logo.png" width="300"/>
 
