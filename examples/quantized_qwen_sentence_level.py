@@ -74,7 +74,7 @@ print(f"Target tokens found at positions {start_idx} to {end_idx}")
 
 
 # Get logits for the relevant token positions (excluding the last token for next-token prediction)
-target_logits = output_logits[0, start_idx:end_idx]  # shape: [target_len, vocab_size]
+target_logits = output_logits[0, start_idx-1:end_idx-1]  # shape: [target_len, vocab_size]
 
 # For each position, take the max logit value
 max_logits_per_token = torch.max(target_logits, dim=-1).values  # shape: [target_len]
