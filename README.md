@@ -11,8 +11,23 @@ The **AttnLRP** method can successfully trace the relevant supporting context fr
 
 > *The mission was led by astronauts Neil Armstrong, Edwin “Buzz” Aldrin, and Michael Collins. Armstrong’s famous words upon landing were, “That’s one small step for man, one giant leap for mankind.”*
 
-The code and result can be seen in [Sentence-level LRP Colab](https://colab.research.google.com/drive/163TSyjS9GeRagDEB-kUe2AsVnQ0K-Ai0?usp=sharing).
+The complete code and result can be seen in [Sentence-level LRP Colab](https://colab.research.google.com/drive/163TSyjS9GeRagDEB-kUe2AsVnQ0K-Ai0?usp=sharing).
 
+And the core implementation is:
+
+```python
+# Get predicted logits for the relevant token positions
+target_logits = output_logits[0, start_idx-1:end_idx-1]  # shape: [target_len, vocab_size]
+
+# For each position, take the max logit value
+max_logits_per_token = torch.max(target_logits, dim=-1).values  # shape: [target_len]
+
+# Sum them
+sum_max_logits = max_logits_per_token.sum()
+
+# Backward pass (the relevance is initialized with the value of sum_max_logits)
+sum_max_logits.backward()
+```
 
 ## Original 
 <div align="center">
