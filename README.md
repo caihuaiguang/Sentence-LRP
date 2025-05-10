@@ -7,7 +7,7 @@ When explaining a specific sentence output by a large language model, such as:
 
 > *"Neil Armstrong is considered to be the most famous person in the history of the Moon landing. His iconic quote, 'That’s one small step for man, one giant leap for mankind,' became an instant classic and is still remembered today."*
 
-The**AttnLRP** method can successfully trace the relevant supporting context from a source document:
+The **AttnLRP** method can successfully trace the relevant supporting context from a source document:
 
 > *The mission was led by astronauts Neil Armstrong, Edwin “Buzz” Aldrin, and Michael Collins. Armstrong’s famous words upon landing were, “That’s one small step for man, one giant leap for mankind.”*
 
